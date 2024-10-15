@@ -199,22 +199,6 @@ func (p *Plan) Calculate() *Plan {
 				}
 			}
 		}
-        // Change the specified old txt-owner to the new txt-owner (if TXTOwnerMigrate==true and set the from-txt-owner)
-        if p.TXTOwnerMigrate && row.current != nil && len(row.candidates) > 0 && row.current.Labels[endpoint.OwnerLabelKey] == p.TXTOwnerOld {
-            hasMig = true
-            oldOwner := row.current.Labels[endpoint.OwnerLabelKey]
-            update := row.current
-            update.Labels[endpoint.OwnerLabelKey] = p.TXTOwner
-            log.WithFields(log.Fields{
-                "previousOwner": oldOwner,
-                "newOwner":      p.TXTOwner,
-                "dnsName":       row.current.DNSName,
-                "recordType":    row.current.RecordType,
-            }).Info("Found record to migrate")
-            changes.UpdateNew = append(changes.UpdateNew, update)
-            changes.UpdateOld = append(changes.UpdateOld, row.current)
-            continue
-        }
 
 		// dns name released or possibly owned by a different external dns
 		if len(row.current) > 0 && len(row.candidates) == 0 {
@@ -242,6 +226,23 @@ func (p *Plan) Calculate() *Plan {
 					creates = append(creates, update)
 				}
 
+				// Change the specified old txt-owner to the new txt-owner (if TXTOwnerMigrate==true and set the from-txt-owner)
+				if p.TXTOwnerMigrate && records.current != nil && len(records.candidates) > 0 && records.current.Labels[endpoint.OwnerLabelKey] == p.TXTOwnerOld {
+					hasMig = true
+					oldOwner := records.current.Labels[endpoint.OwnerLabelKey]
+					update := records.current
+					update.Labels[endpoint.OwnerLabelKey] = p.TXTOwner
+					log.WithFields(log.Fields{
+						"previousOwner": oldOwner,
+						"newOwner":      p.TXTOwner,
+						"dnsName":       records.current.DNSName,
+						"recordType":    records.current.RecordType,
+					}).Info("Found record to migrate")
+					changes.UpdateNew = append(changes.UpdateNew, update)
+					changes.UpdateOld = append(changes.UpdateOld, records.current)
+					continue
+				}
+
 				// update existing record
 				if records.current != nil && len(records.candidates) > 0 {
 					update := t.resolver.ResolveUpdate(records.current, records.candidates)
@@ -252,16 +253,6 @@ func (p *Plan) Calculate() *Plan {
 						changes.UpdateOld = append(changes.UpdateOld, records.current)
 					}
 				}
-
-
-		// TODO: allows record type change, which might not be supported by all dns providers
-		if row.current != nil && len(row.candidates) > 0 { // dns name is taken
-			update := t.resolver.ResolveUpdate(row.current, row.candidates)
-			// compare "update" to "current" to figure out if actual update is required
-			if shouldUpdateTTL(update, row.current) || targetChanged(update, row.current) || p.shouldUpdateProviderSpecific(update, row.current) {
-				inheritOwner(row.current, update)
-				changes.UpdateNew = append(changes.UpdateNew, update)
-				changes.UpdateOld = append(changes.UpdateOld, row.current)
 			}
 
 			if len(creates) > 0 {
