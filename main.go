@@ -93,6 +93,9 @@ func main() {
 	if cfg.DryRun {
 		log.Info("running in dry-run mode. No changes to DNS records will be made.")
 	}
+	if cfg.TXTOwnerMigrate {
+		log.Infof("modify the previous txt-owner (%s) to the current txt-owner (%s)", cfg.TXTOwnerOld, cfg.TXTOwnerID)
+	}
 
 	ll, err := log.ParseLevel(cfg.LogLevel)
 	if err != nil {
@@ -412,6 +415,9 @@ func main() {
 		ManagedRecordTypes:   cfg.ManagedDNSRecordTypes,
 		ExcludeRecordTypes:   cfg.ExcludeDNSRecordTypes,
 		MinEventSyncInterval: cfg.MinEventSyncInterval,
+		TXTOwner:             cfg.TXTOwnerID,
+		TXTOwnerMigrate:      cfg.TXTOwnerMigrate,
+		TXTOwnerOld:          cfg.TXTOwnerOld,
 	}
 
 	if cfg.Once {
