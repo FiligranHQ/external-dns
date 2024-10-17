@@ -415,7 +415,6 @@ func main() {
 		ManagedRecordTypes:   cfg.ManagedDNSRecordTypes,
 		ExcludeRecordTypes:   cfg.ExcludeDNSRecordTypes,
 		MinEventSyncInterval: cfg.MinEventSyncInterval,
-		TXTOwner:             cfg.TXTOwnerID,
 		TXTOwnerMigrate:      cfg.TXTOwnerMigrate,
 		TXTOwnerOld:          cfg.TXTOwnerOld,
 	}

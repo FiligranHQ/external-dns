@@ -49,8 +49,6 @@ type Plan struct {
 	ExcludeRecords []string
 	// OwnerID of records to manage
 	OwnerID string
-	// current txt-owner
-	TXTOwner string
 	// has migrate txt-owner
 	HasMig bool
 	// modify owner flag
@@ -226,26 +224,27 @@ func (p *Plan) Calculate() *Plan {
 					creates = append(creates, update)
 				}
 
-				// Change the specified old txt-owner to the new txt-owner (if TXTOwnerMigrate==true and set the from-txt-owner)
-				if p.TXTOwnerMigrate && records.current != nil && len(records.candidates) > 0 && records.current.Labels[endpoint.OwnerLabelKey] == p.TXTOwnerOld {
-					hasMig = true
-					oldOwner := records.current.Labels[endpoint.OwnerLabelKey]
-					update := records.current
-					update.Labels[endpoint.OwnerLabelKey] = p.TXTOwner
-					log.WithFields(log.Fields{
-						"previousOwner": oldOwner,
-						"newOwner":      p.TXTOwner,
-						"dnsName":       records.current.DNSName,
-						"recordType":    records.current.RecordType,
-					}).Info("Found record to migrate")
-					changes.UpdateNew = append(changes.UpdateNew, update)
-					changes.UpdateOld = append(changes.UpdateOld, records.current)
-					continue
-				}
-
 				// update existing record
 				if records.current != nil && len(records.candidates) > 0 {
 					update := t.resolver.ResolveUpdate(records.current, records.candidates)
+
+					// Change the specified old txt-owner to the new txt-owner (if TXTOwnerMigrate==true and set the from-txt-owner)
+					if p.TXTOwnerMigrate && records.current.Labels[endpoint.OwnerLabelKey] == p.TXTOwnerOld {
+						log.Infof("Migrating record : %s", records.current)
+						hasMig = true
+						oldOwner := records.current.Labels[endpoint.OwnerLabelKey]
+						update := records.current
+						update.Labels[endpoint.OwnerLabelKey] = p.OwnerID
+						log.WithFields(log.Fields{
+							"previousOwner": oldOwner,
+							"newOwner":      p.OwnerID,
+							"dnsName":       records.current.DNSName,
+							"recordType":    records.current.RecordType,
+						}).Info("Found record to migrate")
+						changes.UpdateNew = append(changes.UpdateNew, update)
+						changes.UpdateOld = append(changes.UpdateOld, records.current)
+						continue
+					}
 
 					if shouldUpdateTTL(update, records.current) || targetChanged(update, records.current) || p.shouldUpdateProviderSpecific(update, records.current) {
 						inheritOwner(records.current, update)

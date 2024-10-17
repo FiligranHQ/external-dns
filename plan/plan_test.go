@@ -776,7 +776,7 @@ func (suite *PlanTestSuite) TestMigrateTXTRecord() {
 		Desired:         desired,
 		TXTOwnerMigrate: true,
 		TXTOwnerOld:     "owner-old",
-		TXTOwner:        "owner",
+		OwnerID:         "owner",
 		ManagedRecords:  []string{endpoint.RecordTypeA},
 	}
 

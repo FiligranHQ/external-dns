@@ -193,6 +193,7 @@ func (p *OVHProvider) change(change ovhChange) error {
 		return p.client.Post(fmt.Sprintf("/domain/zone/%s/record", change.Zone), change.ovhRecordFields, nil)
 	case ovhDelete:
 		if change.ID == 0 {
+			log.Debugf("OVH: No ID found for following entry: %s", change.String())
 			return ErrRecordToMutateNotFound
 		}
 		log.Debugf("OVH: Delete an entry to %s", change.String())
