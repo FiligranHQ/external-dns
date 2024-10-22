@@ -277,6 +277,8 @@ func (p *Plan) Calculate() *Plan {
 	if p.OwnerID != "" {
 		changes.Delete = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.Delete)
 		changes.Delete = endpoint.RemoveDuplicates(changes.Delete)
+		// When running a migration we don't want to filter out endpoint duplicates on ownerId value so that old records
+		// are deleted correctly
 		if !hasMig {
 			changes.UpdateOld = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.UpdateOld)
 		}
