@@ -230,19 +230,18 @@ func (p *Plan) Calculate() *Plan {
 
 					// Change the specified old txt-owner to the new txt-owner (if TXTOwnerMigrate==true and set the from-txt-owner)
 					if p.TXTOwnerMigrate && records.current.Labels[endpoint.OwnerLabelKey] == p.TXTOwnerOld {
-						log.Infof("Migrating record : %s", records.current)
 						hasMig = true
-						oldOwner := records.current.Labels[endpoint.OwnerLabelKey]
-						update := records.current
-						update.Labels[endpoint.OwnerLabelKey] = p.OwnerID
+						oldRecord := records.current
+						changes.UpdateOld = append(changes.UpdateOld, oldRecord)
+						recordToMigrate := update
+						recordToMigrate.Labels[endpoint.OwnerLabelKey] = p.OwnerID
 						log.WithFields(log.Fields{
-							"previousOwner": oldOwner,
+							"previousOwner": oldRecord.Labels[endpoint.OwnerLabelKey],
 							"newOwner":      p.OwnerID,
 							"dnsName":       records.current.DNSName,
 							"recordType":    records.current.RecordType,
 						}).Info("Found record to migrate")
 						changes.UpdateNew = append(changes.UpdateNew, update)
-						changes.UpdateOld = append(changes.UpdateOld, records.current)
 						continue
 					}
 
@@ -278,7 +277,9 @@ func (p *Plan) Calculate() *Plan {
 	if p.OwnerID != "" {
 		changes.Delete = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.Delete)
 		changes.Delete = endpoint.RemoveDuplicates(changes.Delete)
-		changes.UpdateOld = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.UpdateOld)
+		if !hasMig {
+			changes.UpdateOld = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.UpdateOld)
+		}
 		changes.UpdateNew = endpoint.FilterEndpointsByOwnerID(p.OwnerID, changes.UpdateNew)
 	}
 

@@ -764,9 +764,9 @@ func (suite *PlanTestSuite) TestIgnoreTargetCase() {
 
 func (suite *PlanTestSuite) TestMigrateTXTRecord() {
 	current := []*endpoint.Endpoint{suite.migrateTXTOwnerOld}
-	desired := []*endpoint.Endpoint{suite.migrateTXTOwnerOld}
+	desired := []*endpoint.Endpoint{suite.migrateTXTOwnerNew}
 	expectedCreate := []*endpoint.Endpoint{}
-	expectedUpdateOld := []*endpoint.Endpoint{suite.migrateTXTOwnerNew}
+	expectedUpdateOld := []*endpoint.Endpoint{suite.migrateTXTOwnerOld}
 	expectedUpdateNew := []*endpoint.Endpoint{suite.migrateTXTOwnerNew}
 	expectedDelete := []*endpoint.Endpoint{}
 

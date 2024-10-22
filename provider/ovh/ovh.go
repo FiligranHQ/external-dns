@@ -146,11 +146,11 @@ func (p *OVHProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) e
 
 	allChanges := make([]ovhChange, 0, countTargets(changes.Create, changes.UpdateNew, changes.UpdateOld, changes.Delete))
 
-	allChanges = append(allChanges, newOvhChange(ovhCreate, changes.Create, zones, records)...)
-	allChanges = append(allChanges, newOvhChange(ovhCreate, changes.UpdateNew, zones, records)...)
-
 	allChanges = append(allChanges, newOvhChange(ovhDelete, changes.UpdateOld, zones, records)...)
 	allChanges = append(allChanges, newOvhChange(ovhDelete, changes.Delete, zones, records)...)
+
+	allChanges = append(allChanges, newOvhChange(ovhCreate, changes.UpdateNew, zones, records)...)
+	allChanges = append(allChanges, newOvhChange(ovhCreate, changes.Create, zones, records)...)
 
 	log.Infof("OVH: %d changes will be done", len(allChanges))
 
@@ -192,11 +192,11 @@ func (p *OVHProvider) change(change ovhChange) error {
 		log.Debugf("OVH: Add an entry to %s", change.String())
 		return p.client.Post(fmt.Sprintf("/domain/zone/%s/record", change.Zone), change.ovhRecordFields, nil)
 	case ovhDelete:
+		log.Debugf("OVH: Delete an entry to %s", change.String())
 		if change.ID == 0 {
-			log.Debugf("OVH: No ID found for following entry: %s", change.String())
+			log.Debugf("OVH: No ID found when deleting entry: %s", change.String())
 			return ErrRecordToMutateNotFound
 		}
-		log.Debugf("OVH: Delete an entry to %s", change.String())
 		return p.client.Delete(fmt.Sprintf("/domain/zone/%s/record/%d", change.Zone, change.ID), nil)
 	}
 	return nil
