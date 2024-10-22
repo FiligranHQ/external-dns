@@ -62,6 +62,16 @@ func testTXTRegistryNew(t *testing.T) {
 	_, err = NewTXTRegistry(p, "txt", "txt", "owner", time.Hour, "", []string{}, []string{}, false, nil, false, "")
 	require.Error(t, err)
 
+	r, err = NewTXTRegistry(p, "txt", "", "owner", time.Hour, "", []string{}, []string{}, false, nil, true, "old-owner")
+	require.NoError(t, err)
+	assert.Equal(t, p, r.provider)
+
+	r, err = NewTXTRegistry(p, "", "txt", "owner", time.Hour, "", []string{}, []string{}, false, nil, true, "old-owner")
+	require.NoError(t, err)
+
+	_, err = NewTXTRegistry(p, "txt", "txt", "owner", time.Hour, "", []string{}, []string{}, false, nil, true, "old-owner")
+	require.Error(t, err)
+
 	_, ok := r.mapper.(affixNameMapper)
 	require.True(t, ok)
 	assert.Equal(t, "owner", r.ownerID)
@@ -1644,6 +1654,71 @@ func TestMultiClusterDifferentRecordTypeOwnership(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+// TestTXTRecordMigration validates that when migration is enabled from an older owner ID the existing TXT records are updated
+// or deleted according to the Provider's implementation and that we're not left with phantom records that can make the
+// plan behave badly when it tries to reconciliate eventual duplicates
+func TestTXTRecordMigration(t *testing.T) {
+	ctx := context.Background()
+	p := inmemory.NewInMemoryProvider()
+	p.CreateZone(testZone)
+	p.ApplyChanges(ctx, &plan.Changes{
+		Create: []*endpoint.Endpoint{
+			// records on cluster using A record for ingress address
+			newEndpointWithOwner("bar.test-zone.example.org", "1.2.3.4", endpoint.RecordTypeA, "foo"),
+		},
+	})
+
+	r, _ := NewTXTRegistry(p, "%{record_type}-", "", "foo", time.Hour, "", []string{}, []string{}, false, nil, false, "")
+	createdRecords, _ := p.Records(ctx)
+	// Safe to use index here
+	txtRecords := r.generateTXTRecord(createdRecords[0])
+
+	expectedTXTRecords := []*endpoint.Endpoint{
+		{
+			DNSName:    "a-bar.test-zone.example.org",
+			Targets:    endpoint.Targets{"\"heritage=external-dns,external-dns/owner=foo\""},
+			RecordType: endpoint.RecordTypeTXT,
+			Labels: map[string]string{
+				endpoint.OwnedRecordLabelKey: "bar.test-zone.example.org",
+			},
+		},
+	}
+
+	assert.Equal(t, expectedTXTRecords, txtRecords)
+
+	p.ApplyChanges(ctx, &plan.Changes{
+		UpdateNew: []*endpoint.Endpoint{
+			// records on cluster using A record for ingress address
+			newEndpointWithOwner("bar.test-zone.example.org", "1.2.3.4", endpoint.RecordTypeA, "foobar"),
+		},
+		UpdateOld: []*endpoint.Endpoint{
+			// records on cluster using A record for ingress address
+			newEndpointWithOwner("bar.test-zone.example.org", "1.2.3.4", endpoint.RecordTypeA, "foo"),
+		},
+	})
+
+	updatedRecords, _ := p.Records(ctx)
+
+	r, _ = NewTXTRegistry(p, "%{record_type}-", "", "foobar", time.Hour, "", []string{}, []string{}, false, nil, true, "foo")
+
+	migratedTXTRecords := r.generateTXTRecord(updatedRecords[0])
+
+	expectedFinalTXT := []*endpoint.Endpoint{
+		{
+			DNSName:    "a-bar.test-zone.example.org",
+			Targets:    endpoint.Targets{"\"heritage=external-dns,external-dns/owner=foobar\""},
+			RecordType: endpoint.RecordTypeTXT,
+			Labels: map[string]string{
+				endpoint.OwnedRecordLabelKey: "bar.test-zone.example.org",
+			},
+		},
+	}
+
+	assert.Len(t, migratedTXTRecords, 1)
+	assert.Equal(t, migratedTXTRecords, expectedFinalTXT)
+
 }
 
 /**
