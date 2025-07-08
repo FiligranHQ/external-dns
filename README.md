@@ -166,7 +166,7 @@ A [breaking change](https://github.com/kubernetes-sigs/external-dns/pull/2281) w
 
 ## Running ExternalDNS
 
-The are two ways of running ExternalDNS:
+There are two ways of running ExternalDNS:
 
 - Deploying to a Cluster
 - Running Locally
